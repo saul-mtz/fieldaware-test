@@ -1,13 +1,11 @@
 package com.fieldaware;
 
 import com.fieldaware.model.Log;
-
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Scanner;
 
 /**
- * com.fieldaware.Main class, here is when the fun stuff begin
+ * Main class, here is when the fun stuff begin
  *
  * @author saul.martinez
  */
@@ -20,7 +18,8 @@ public class Main {
      */
     public static void main(String[] args) {
 
-        if (0  == args.length || args[0].trim().isEmpty()) {
+        // validate the file name received as parameter one
+        if (0 == args.length || args[0].trim().isEmpty()) {
             String jarName = new File(Log.class.getProtectionDomain()
                     .getCodeSource()
                     .getLocation()
@@ -33,13 +32,12 @@ public class Main {
         }
 
         try {
-            Scanner scan = new Scanner(new File(args[0]));
-            while(scan.hasNextLine()) {
-                String line = scan.nextLine();
-                System.out.println(line);
-            }
+            Analyzer analyzer = new Analyzer(args[0]);
+            System.out.println(analyzer.entries.size() + " lines processed");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
+            System.exit(1);
         }
+
     }
 }

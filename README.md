@@ -14,3 +14,9 @@ The first parameter must be the path of the log file that we want to analise:
 ```
 java -jar build/libs/fieldaware-1.0.jar <path of the log file>
 ```
+
+# Tests
+Execute the unit tests using the command:
+```
+./gradlew test
+```
