@@ -7,7 +7,7 @@ import static org.junit.Assert.assertEquals;
 
 public class AnalizerTest {
 
-    @Test public void analizer() throws FileNotFoundException {
+    @Test public void unitTests() throws FileNotFoundException {
         Analyzer analyzer = new Analyzer("src/test/resources/test.log");
 
         assertEquals(analyzer.getByLogLevel("DEBUG").size(), 5);

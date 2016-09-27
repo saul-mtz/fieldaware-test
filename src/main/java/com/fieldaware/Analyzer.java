@@ -1,6 +1,7 @@
 package com.fieldaware;
 
 import com.fieldaware.model.Log;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
@@ -12,21 +13,34 @@ import java.util.*;
  */
 public class Analyzer {
 
+    public Profiler profiler;                      // profiler for this application
     public Set<Log> entries;                        // store all the processed log lines
+
     private Map<String, Set<Log>> logLevelMap;      // index the log entries by log level
     private Map<String, Set<Log>> businessIdMap;    // index the log entries by business id
     private Map<String, Set<Log>> sessionIdMap;     // index the log entries by session id
     private TreeMap<String, Set<Log>> dateMap;      // index the log entries by date, a tree map is used here
                                                     // because the order of the dates is important in order
                                                     // to compare them after, when a range query is needed
+    private boolean  profilingEnabled = false;
 
     /**
-     * Analizes the file lines and store the processed information is the data structures defined above
+     * Constructor with profile flag set to false
+     *
      * @param fileName
      * @throws FileNotFoundException
      */
     public Analyzer(String fileName) throws FileNotFoundException {
+        this(fileName, false);
+    }
 
+    /**
+     * Analyzes the file lines and store the processed information is the data structures defined above
+     *
+     * @param fileName
+     * @throws FileNotFoundException
+     */
+    public Analyzer(String fileName, boolean enableProfiling) throws FileNotFoundException {
         Scanner scan = new Scanner(new File(fileName));
 
         entries = new HashSet<>();
@@ -49,6 +63,11 @@ public class Analyzer {
                     addToCollection(sessionIdMap, logEntry.sessionId, logEntry);
                     addToCollection(dateMap, logEntry.date, logEntry);
                 }
+
+                if (enableProfiling) {
+                    profiler = new Profiler();
+                    profilingEnabled = true;
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -70,16 +89,41 @@ public class Analyzer {
     }
 
     /**
+     * Find the value with the key "id" in the collection received as first parameter
+     * if none record is found return an empty set
+     *
+     * @param collection
+     * @param id
+     * @return
+     */
+    private Set<Log> getById(Map<String, Set<Log>> collection, String id) {
+
+        long startTime = 0;
+        long endTime = 0;
+
+        if (profilingEnabled) {
+            startTime = System.nanoTime();
+        }
+
+        Set<Log> value = !collection.containsKey(id) ? new HashSet<>() : collection.get(id);
+
+        if (profilingEnabled) {
+            endTime = System.nanoTime();
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            profiler.addExecution(stackTrace[2].getMethodName(), startTime, endTime);
+        }
+
+        return value;
+    }
+
+    /**
      * Get the entries which log level value is equal to the parameter given
      *
      * @param logLevel
      * @return
      */
     public Set<Log> getByLogLevel(String logLevel) {
-        if (!logLevelMap.containsKey(logLevel)) {
-            return new HashSet<>();
-        }
-        return logLevelMap.get(logLevel);
+        return getById(logLevelMap, logLevel);
     }
 
     /**
@@ -89,10 +133,7 @@ public class Analyzer {
      * @return
      */
     public Set<Log> getByBusinessId(String businessId) {
-        if (!businessIdMap.containsKey(businessId)) {
-            return new HashSet<>();
-        }
-        return businessIdMap.get(businessId);
+        return getById(businessIdMap, businessId);
     }
 
     /**
@@ -102,10 +143,7 @@ public class Analyzer {
      * @return
      */
     public Set<Log> getBySessionId(String sessionId) {
-        if (!sessionIdMap.containsKey(sessionId)) {
-            return new HashSet<>();
-        }
-        return sessionIdMap.get(sessionId);
+        return getById(sessionIdMap, sessionId);
     }
 
     /**
@@ -116,30 +154,40 @@ public class Analyzer {
      * @return
      */
     public Set<Log> getByDateRange(String fromDate, String toDate) {
-        // sanity checks
-        if (null == fromDate || null == toDate ||
-            0 == fromDate.trim().length() || 0 == toDate.trim().length() ||
-            0 == dateMap.size()) {
-            return new HashSet<>();
-        }
-
-        // the toDate is lexicographically first then fromDate, have to switch them
-        if (fromDate.compareTo(toDate) > 0) {
-            String tmp = toDate;
-            toDate = fromDate;
-            fromDate = tmp;
-        }
-
-        String fromKey = dateMap.ceilingKey(fromDate);
-        String toKey = dateMap.floorKey(toDate);
-
         Set<Log> values = new HashSet<>();
-        if (null != fromKey && null != toKey) {
-            Iterator<Set<Log>> it = dateMap.subMap(fromKey, true, toKey, true).values().iterator();
-            while (it.hasNext()) {
-                values.addAll(it.next());
+
+        long startTime = 0;
+        if (profilingEnabled) {
+            startTime = System.nanoTime();
+        }
+
+        // sanity checks
+        if (!(null == fromDate || null == toDate ||
+            0 == fromDate.trim().length() || 0 == toDate.trim().length() ||
+            0 == dateMap.size())) {
+
+            // the toDate is lexicographically first then fromDate, have to switch them
+            if (fromDate.compareTo(toDate) > 0) {
+                String tmp = toDate;
+                toDate = fromDate;
+                fromDate = tmp;
+            }
+
+            String fromKey = dateMap.ceilingKey(fromDate);
+            String toKey = dateMap.floorKey(toDate);
+
+            if (null != fromKey && null != toKey) {
+                Iterator<Set<Log>> it = dateMap.subMap(fromKey, true, toKey, true).values().iterator();
+                while (it.hasNext()) {
+                    values.addAll(it.next());
+                }
             }
         }
+
+        if (profilingEnabled) {
+            profiler.addExecution("getByDateRange", startTime, System.nanoTime());
+        }
+
         return values;
     }
 }

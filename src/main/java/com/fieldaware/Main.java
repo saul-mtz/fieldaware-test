@@ -32,8 +32,14 @@ public class Main {
         }
 
         try {
-            Analyzer analyzer = new Analyzer(args[0]);
+
+            // checks if the profile flag is present
+            boolean enableProfiling = (2 == args.length && args[1].trim().equals("--profile"));
+            Analyzer analyzer = new Analyzer(args[0], enableProfiling);
             System.out.println(analyzer.entries.size() + " lines processed");
+            if (enableProfiling) {
+                System.out.println(analyzer.profiler);
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             System.exit(1);
